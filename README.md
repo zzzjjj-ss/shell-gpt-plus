@@ -24,8 +24,17 @@
 在终端中执行：
 
 ```bash
-pip install git+https://github.com/zzzjjj-ss/shell-gpt-plus.git@v1.0.0
+py -m pip install git+https://github.com/zzzjjj-ss/shell-gpt-plus.git@v1.0.0
 ```
+
+### 使用
+
+在终端中执行：
+
+```bash
+py -m sgpt "你好"
+```
+
 
 
 ### Windows 平台快速调用（可选）
@@ -36,7 +45,7 @@ pip install git+https://github.com/zzzjjj-ss/shell-gpt-plus.git@v1.0.0
 
    ```batch
    @echo off
-   python -m sgpt %*
+   py -m sgpt %*
    ```
 
 2. 将 `sgpt.bat` 所在目录的**绝对路径**添加到系统环境变量 `PATH` 中：
@@ -52,6 +61,10 @@ pip install git+https://github.com/zzzjjj-ss/shell-gpt-plus.git@v1.0.0
    ```
 
    正常返回 AI 回复即表示配置成功。
+###注意
+本项目AI没有上下文/记忆
+
+
 
 * * *
 
