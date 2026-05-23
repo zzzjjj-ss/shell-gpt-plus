@@ -1,3 +1,22 @@
+# shell-gpt-plus （中文增强版）
+
+基于 [TheR1D/shell_gpt](https://github.com/TheR1D/shell_gpt) 的深度定制版本。
+
+## ✨ 增强功能
+- 🧠 修复函数调用与 DeepSeek 思维链的兼容性问题
+- 🌐 内置 `web_search`、`fetch_url` 等联网搜索工具
+- 🧰 全中文角色：Shell 命令生成、代码生成、命令解释全部汉化
+- 📦 一键安装脚本 `install.bat`，支持 DeepSeek 等国内 API
+
+## 快速开始
+1. 下载本仓库
+2. 运行 `install.bat`
+3. 编辑 `%USERPROFILE%\.config\shell_gpt\.sgptrc`，填入你的 API Key
+4. 重新打开终端，输入 `sgpt "你好"`
+
+---
+# 以下为原版 README
+
 # ShellGPT
 A command-line productivity tool powered by AI large language models (LLM). This command-line tool offers streamlined generation of **shell commands, code snippets, documentation**, eliminating the need for external resources (like Google search). Supports Linux, macOS, Windows and compatible with all major Shells like PowerShell, CMD, Bash, Zsh, etc.
 

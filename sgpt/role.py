@@ -77,7 +77,7 @@ class SystemRole:
         file_path = cls.storage / f"{name}.json"
         if not file_path.exists():
             raise UsageError(f'Role "{name}" not found.')
-        return cls(**json.loads(file_path.read_text()))
+        return cls(**json.loads(file_path.read_text(encoding="utf-8")))
 
     @classmethod
     @option_callback

@@ -3,13 +3,16 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "shell_gpt"
-description = "A command-line productivity tool powered by large language models, will help you accomplish your tasks faster and more efficiently."
-keywords = ["shell", "gpt", "openai", "ollama", "cli", "productivity", "cheet-sheet"]
+name = "shell-gpt-plus"
+description = "A command-line productivity tool powered by large language models (Chinese enhanced, with web search and tool-use)."
+keywords = ["shell", "gpt", "openai", "ollama", "cli", "productivity", "cheet-sheet", "deepseek", "chinese"]
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
-authors = [{ name = "Farkhod Sadykov", email = "farkhod@sadykov.dev" }]
+authors = [
+    { name = "Farkhod Sadykov", email = "farkhod@sadykov.dev" },
+    { name = "zzzjjj-ss", email = "zzzjjjcc@outlook.com" }
+]
 dynamic = ["version"]
 classifiers = [
     "Operating System :: OS Independent",
@@ -30,6 +33,9 @@ dependencies = [
     "distro >= 1.8.0, < 2.0.0",
     'pyreadline3 >= 3.4.1, < 4.0.0; sys_platform == "win32"',
     "prompt_toolkit >= 3.0.51",
+    "requests",
+    "beautifulsoup4",
+    "lxml",
 ]
 
 [project.optional-dependencies]
@@ -54,9 +60,9 @@ dev = [
 sgpt = "sgpt:cli"
 
 [project.urls]
-homepage = "https://github.com/ther1d/shell_gpt"
-repository = "https://github.com/ther1d/shell_gpt"
-documentation = "https://github.com/TheR1D/shell_gpt/blob/main/README.md"
+homepage = "https://github.com/zzzjjj-ss/shell-gpt-plus"
+repository = "https://github.com/zzzjjj-ss/shell-gpt-plus"
+documentation = "https://github.com/zzzjjj-ss/shell-gpt-plus/blob/main/README.md"
 
 [tool.hatch.version]
 path = "sgpt/__version__.py"
