@@ -1,18 +1,34 @@
 # shell-gpt-plus （中文增强版）
 
-基于 [TheR1D/shell_gpt](https://github.com/TheR1D/shell_gpt) 的深度定制版本。
+基于 [TheR1D/shell_gpt](https://github.com/TheR1D/shell_gpt) 深度定制的命令行 AI 助手，专为国内用户优化，支持 **DeepSeek** 等兼容 OpenAI 接口的模型，内置联网搜索与文件操作工具，全中文交互，开箱即用。
 
 ## ✨ 增强功能
-- 🧠 修复函数调用与 DeepSeek 思维链的兼容性问题
-- 🌐 内置 `web_search`、`fetch_url` 等联网搜索工具
-- 🧰 全中文角色：Shell 命令生成、代码生成、命令解释全部汉化
-- 📦 一键安装，支持 DeepSeek 等国内 API，首次运行自动部署
+
+- 🧠 **修复函数调用兼容性** – 解决与 DeepSeek 思维链（`reasoning_content`）的冲突，函数调用稳定可用。
+- 🌐 **内置联网搜索** – 提供 `web_search` 和 `fetch_url` 工具，让 AI 实时查询网页内容。
+- 🔧 **可扩展工具集** – 已包含 `execute_shell_command`、`web_search`、`fetch_url`，可按需自定义。
+- 🧰 **全中文角色** – 所有系统角色（Shell 命令生成、代码生成、命令解释等）均已汉化。
+- 📦 **一键部署** – 安装后首次运行自动部署中文角色和工具，无需手动复制文件。
+- 🚀 **国内 API 直连** – 默认配置指向 DeepSeek（`api.deepseek.com`），也可自行修改。
 
 ## 快速开始
-1. 确保已安装 Python 3.10 或以上版本
-2. 打开终端，执行以下命令安装：
-   ```bash
-   pip install git+https://github.com/zzzjjj-ss/shell-gpt-plus.git@v1.0.0
+
+### 前置条件
+
+- **Python 3.10 或以上**
+- **Git**（用于 `pip install git+...`）
+- **DeepSeek API Key**（[申请地址](https://platform.deepseek.com/)）或其他兼容 OpenAI 接口的 Key
+
+### 安装
+
+在终端中执行：
+
+```bash
+pip install git+https://github.com/zzzjjj-ss/shell-gpt-plus.git@v1.0.0
+```
+
+
+
 ---
 # 以下为原版 README
 
