@@ -6,14 +6,13 @@
 - 🧠 修复函数调用与 DeepSeek 思维链的兼容性问题
 - 🌐 内置 `web_search`、`fetch_url` 等联网搜索工具
 - 🧰 全中文角色：Shell 命令生成、代码生成、命令解释全部汉化
-- 📦 一键安装脚本 `install.bat`，支持 DeepSeek 等国内 API
+- 📦 一键安装，支持 DeepSeek 等国内 API，首次运行自动部署
 
 ## 快速开始
-1. 下载本仓库
-2. 运行 `install.bat`
-3. 编辑 `%USERPROFILE%\.config\shell_gpt\.sgptrc`，填入你的 API Key
-4. 重新打开终端，输入 `sgpt "你好"`
-
+1. 确保已安装 Python 3.10 或以上版本
+2. 打开终端，执行以下命令安装：
+   ```bash
+   pip install git+https://github.com/zzzjjj-ss/shell-gpt-plus.git@v1.0.0
 ---
 # 以下为原版 README
 
