@@ -28,8 +28,33 @@ pip install git+https://github.com/zzzjjj-ss/shell-gpt-plus.git@v1.0.0
 ```
 
 
+### Windows 平台快速调用（可选）
 
----
+为方便在任意路径下直接使用 `sgpt` 命令，可创建批处理脚本并添加至系统 PATH。
+
+1. 在项目目录（或固定路径，例如 `C:\Tools\shell-gpt-plus`）新建文件 `sgpt.bat`，写入以下内容：
+
+   ```batch
+   @echo off
+   python -m sgpt %*
+   ```
+
+2. 将 `sgpt.bat` 所在目录的**绝对路径**添加到系统环境变量 `PATH` 中：
+   - 按 `Win + R`，输入 `sysdm.cpl` 并回车。
+   - 点击 **高级** → **环境变量**。
+   - 在 **用户变量** 或 **系统变量** 中找到 `Path`，双击编辑。
+   - 点击 **新建**，粘贴目录路径（如 `C:\Tools\shell-gpt-plus`），依次确定保存。
+
+3. 重新打开任意命令行窗口，输入以下命令验证：
+
+   ```batch
+   sgpt "你好"
+   ```
+
+   正常返回 AI 回复即表示配置成功。
+
+* * *
+
 # 以下为原版 README
 
 # ShellGPT
