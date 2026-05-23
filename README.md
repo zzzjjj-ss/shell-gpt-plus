@@ -61,6 +61,28 @@ py -m sgpt "你好"
    ```
 
    正常返回 AI 回复即表示配置成功。
+
+
+
+### 卸载
+
+若需从系统中完全移除 shell-gpt-plus，请按以下步骤操作：
+
+1. **卸载 Python 包**  
+   ```bash
+   py -m pip uninstall shell-gpt-plus
+   ```
+
+2. **移除 Windows 快速调用配置（如已配置）**  
+   - 删除之前创建的 `sgpt.bat` 文件。  
+   - 从系统环境变量 `PATH` 中删除该文件所在目录（参考上方第2步进入环境变量设置）。
+
+3. **删除配置文件与缓存（可选）**  
+   - **Linux / macOS**：`rm ~/.config/shell_gpt`  
+   - **Windows**：手动删除 `C:\Users\你的用户名\.config\shell_gpt` 文件夹。
+
+
+
 ###注意
 本项目AI没有上下文/记忆
 
