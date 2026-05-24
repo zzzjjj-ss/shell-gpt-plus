@@ -151,7 +151,8 @@ class ChatHandler(Handler):
         if self.initiated:
             chat_role_name = self.role.get_role_name(self.initial_message(self.chat_id))
             if not chat_role_name:
-                raise BadParameter(f'Could not determine chat role of "{self.chat_id}"')
+                # 无法确定角色时，使用当前角色继续（不再报错）
+                return
             if self.role.name == DefaultRoles.DEFAULT.value:
                 # If user didn't pass chat mode, we will use the one that was used to initiate the chat.
                 self.role = SystemRole.get(chat_role_name)
