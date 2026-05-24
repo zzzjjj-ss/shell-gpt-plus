@@ -1,48 +1,88 @@
 # shell-gpt-plus （中文增强版）
 
-基于 [TheR1D/shell_gpt](https://github.com/TheR1D/shell_gpt) 深度定制的命令行 AI 助手，专为国内用户优化，支持 **DeepSeek** 等兼容 OpenAI 接口的模型，内置联网搜索与文件操作工具，全中文交互，开箱即用。
+基于 [TheR1D/shell_gpt](https://github.com/TheR1D/shell_gpt) 深度定制的命令行 AI 助手，专为国内用户优化，支持 **DeepSeek** 等兼容 OpenAI 接口的模型，内置联网搜索、长期记忆与文件操作工具，全中文交互，开箱即用。
 
 ## ✨ 增强功能
 
-- 🧠 **修复函数调用兼容性** – 解决与 DeepSeek 思维链（`reasoning_content`）的冲突，函数调用稳定可用。
+- 🧠 **长期记忆** – 新增 `remember` 与 `recall` 工具，让 AI 跨对话记住你的偏好、路径等关键信息。
+- 🔧 **修复函数调用兼容性** – 解决与 DeepSeek 思维链（`reasoning_content`）的冲突，函数调用稳定可用。
 - 🌐 **内置联网搜索** – 提供 `web_search` 和 `fetch_url` 工具，让 AI 实时查询网页内容。
-- 🔧 **可扩展工具集** – 已包含 `execute_shell_command`、`web_search`、`fetch_url`，可按需自定义。
-- 🧰 **全中文角色** – 所有系统角色（Shell 命令生成、代码生成、命令解释等）均已汉化。
-- 📦 **一键部署** – 安装后首次运行自动部署中文角色和工具，无需手动复制文件。
-- 🚀 **国内 API 直连** – 默认配置指向 DeepSeek（`api.deepseek.com`），也可自行修改。
+- 🧰 **可扩展工具集** – 已包含 `execute_shell_command`、`web_search`、`fetch_url`、`remember`、`recall`，可按需自定义。
+- 📄 **全中文角色** – 所有系统角色（Shell 命令生成、代码生成、命令解释等）均已汉化。
+- 🚀 **一键部署** – 安装后首次运行自动部署中文角色和工具，无需手动复制文件。
+- 🌍 **国内 API 直连** – 默认配置指向 DeepSeek（`api.deepseek.com`），也可自行修改。
 
-## 快速开始
+## 📦 安装
+
+### 方式一：从 PyPI 安装（推荐）
+```bash
+pip install shell-gpt-plus
+```
+
+### 方式二：从 GitHub 安装最新开发版
+```bash
+pip install git+https://github.com/zzzjjj-ss/shell-gpt-plus.git
+```
+
+### 方式三：安装指定版本（例如 v1.1.0）
+```bash
+pip install git+https://github.com/zzzjjj-ss/shell-gpt-plus.git@v1.1.0
+```
 
 ### 前置条件
-
 - **Python 3.10 或以上**
-- **Git**（用于 `pip install git+...`）
 - **DeepSeek API Key**（[申请地址](https://platform.deepseek.com/)）或其他兼容 OpenAI 接口的 Key
 
-### 安装
+## 🔄 升级
 
-在终端中执行：
-
+### 从 PyPI 升级（推荐）
 ```bash
-py -m pip install git+https://github.com/zzzjjj-ss/shell-gpt-plus.git@v1.0.0
+pip install --upgrade shell-gpt-plus
 ```
 
-### 使用
-
-在终端中执行：
+### 从 GitHub 升级
+如果你是通过 Git 直接安装的：
 
 ```bash
-py -m sgpt "你好"
+# 升级到最新 main 分支
+pip install --upgrade git+https://github.com/zzzjjj-ss/shell-gpt-plus.git
+
+# 升级到指定版本（例如 v1.1.0）
+pip install --upgrade git+https://github.com/zzzjjj-ss/shell-gpt-plus.git@v1.1.0
 ```
 
+### 从旧版本（v1.0.0）升级到 v1.1.0
+如果你之前使用 `@v1.0.0` 标签安装，运行：
+```bash
+pip install --upgrade git+https://github.com/zzzjjj-ss/shell-gpt-plus.git@v1.1.0
+```
 
+> 💡 **升级后**：首次运行时工具和角色会自动更新，无需额外操作。记忆文件（`~/.shell_gpt_memory.txt`）兼容并保留。
 
-### Windows 平台快速调用（可选）
+## 🚀 快速开始
+
+1. **配置 API Key**（二选一）：
+   - **环境变量**：`setx OPENAI_API_KEY "你的DeepSeek-Key"`（Windows）或 `export OPENAI_API_KEY="你的Key"`（Linux/macOS）。
+   - **配置文件**：首次运行时会自动创建 `~/.config/shell_gpt/config.json`，按提示填入 Key。
+
+2. **开始对话**：
+   ```bash
+   sgpt "你好"
+   ```
+
+## 💡 长期记忆功能
+
+从 v1.1.0 起，你可以让 AI 记住关键信息，并在后续对话中自动调用。
+
+- **记住信息**：`sgpt "记住，我的项目路径是 D:\work\project"`
+- **回忆信息**：`sgpt "我的项目路径在哪？"`（AI 会自动调用 `recall` 工具查询记忆）
+- 所有记忆保存在 `~/.shell_gpt_memory.txt`，可手动查看或删除。
+
+## 💻 Windows 平台快速调用（可选）
 
 为方便在任意路径下直接使用 `sgpt` 命令，可创建批处理脚本并添加至系统 PATH。
 
-1. 在项目目录（或固定路径，例如 `C:\Tools\shell-gpt-plus`）新建文件 `sgpt.bat`，写入以下内容：
-
+1. 在固定路径（如 `C:\Tools\shell-gpt-plus`）新建文件 `sgpt.bat`，写入：
    ```batch
    @echo off
    py -m sgpt %*
@@ -54,41 +94,29 @@ py -m sgpt "你好"
    - 在 **用户变量** 或 **系统变量** 中找到 `Path`，双击编辑。
    - 点击 **新建**，粘贴目录路径（如 `C:\Tools\shell-gpt-plus`），依次确定保存。
 
-3. 重新打开任意命令行窗口，输入以下命令验证：
+3. 重新打开任意命令行窗口，输入 `sgpt "你好"` 验证。
 
-   ```batch
-   sgpt "你好"
-   ```
+## 🗑️ 卸载
 
-   正常返回 AI 回复即表示配置成功。
-
-
-
-### 卸载
-
-若需从系统中完全移除 shell-gpt-plus，请按以下步骤操作：
-
-1. **卸载 Python 包**  
+1. **卸载 Python 包**：
    ```bash
-   py -m pip uninstall shell-gpt-plus
+   pip uninstall shell-gpt-plus
    ```
 
-2. **移除 Windows 快速调用配置（如已配置）**  
-   - 删除之前创建的 `sgpt.bat` 文件。  
-   - 从系统环境变量 `PATH` 中删除该文件所在目录（参考上方第2步进入环境变量设置）。
+2. **移除 Windows 快速调用配置（如已配置）**：
+   - 删除之前创建的 `sgpt.bat` 文件。
+   - 从系统环境变量 `PATH` 中删除该文件所在目录。
 
-3. **删除配置文件与缓存（可选）**  
-   - **Linux / macOS**：`rm ~/.config/shell_gpt`  
-   - **Windows**：手动删除 `C:\Users\你的用户名\.config\shell_gpt` 文件夹。
+3. **删除配置文件、缓存与记忆文件（可选）**：
+   - **Linux / macOS**：
+     ```bash
+     rm -rf ~/.config/shell_gpt ~/.shell_gpt_memory.txt
+     ```
+   - **Windows**：手动删除 `C:\Users\你的用户名\.config\shell_gpt` 文件夹及 `C:\Users\你的用户名\.shell_gpt_memory.txt` 文件。
+
+---
 
 
-
-###注意
-本项目AI没有上下文/记忆
-
-
-
-* * *
 
 # 以下为原版 README
 
