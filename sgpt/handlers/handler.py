@@ -21,7 +21,7 @@ try:
 except UsageError:
     TRUSTED_ROLES = set()
 
-# ---------- API 调用方式 ----------
+# ---------- API 调用方式（支持 LiteLLM 与原生 OpenAI，容错导入）----------
 completion: Callable[..., Any] = lambda *args, **kwargs: Generator[Any, None, None]
 
 base_url = cfg.get("API_BASE_URL")
@@ -34,22 +34,52 @@ base_request_kwargs = {
 }
 
 if use_litellm:
-    import litellm
-
-    completion = litellm.completion
-    litellm.suppress_debug_info = True
+    try:
+        import litellm
+        completion = litellm.completion
+        litellm.suppress_debug_info = True
+    except ImportError:
+        from openai import OpenAI
+        client = OpenAI(**base_request_kwargs)
+        completion = client.chat.completions.create
+        base_request_kwargs.clear()
 else:
     from openai import OpenAI
-
     client = OpenAI(**base_request_kwargs)
     completion = client.chat.completions.create
     base_request_kwargs.clear()
 
 
+# ---------- 公共清理函数 ----------
+def clean_tool_messages(messages: List[Dict]) -> List[Dict]:
+    """
+    移除所有前面没有对应 assistant.tool_calls 的孤立 tool 消息。
+    OpenAI API 要求每个 tool 消息必须紧跟在带 tool_calls 的 assistant 消息之后。
+    """
+    cleaned = []
+    for i, msg in enumerate(messages):
+        if msg.get("role") == "tool":
+            # 检查前一条消息是否存在，且是 assistant 且包含 tool_calls
+            if i == 0 or messages[i-1].get("role") != "assistant" or "tool_calls" not in messages[i-1]:
+                continue  # 丢弃这条孤立的 tool 消息
+        cleaned.append(msg)
+    return cleaned
+
+
 class Handler:
     cache = Cache(int(cfg.get("CACHE_LENGTH")), Path(cfg.get("CACHE_PATH")))
 
-    def __init__(self, role: SystemRole, markdown: bool) -> None:
+    # ---------- 会话记忆存储目录 ----------
+    SESSIONS_DIR = Path.home() / ".config" / "shell_gpt" / "sessions"
+    _conversations: Dict[str, List[Dict[str, Any]]] = {}
+    _current_session = "default"
+
+    def __init__(
+        self,
+        role: SystemRole,
+        markdown: bool,
+        session_name: str = None,
+    ) -> None:
         self.role = role
         api_base_url = cfg.get("API_BASE_URL")
         self.base_url = None if api_base_url == "default" else api_base_url
@@ -58,33 +88,68 @@ class Handler:
         self.code_theme = cfg.get("CODE_THEME")
         self.color = cfg.get("DEFAULT_COLOR")
 
+        # 会话名：传入优先，否则用当前默认值
+        self.session_name = session_name if session_name is not None else Handler._current_session
+        Handler._current_session = self.session_name
+
+        # 确保目录存在
+        Handler.SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+
     @property
     def printer(self) -> Printer:
         if self.markdown:
             return MarkdownPrinter(self.code_theme)
         return TextPrinter(self.color)
 
-    def make_messages(self, prompt: str) -> List[Dict[str, str]]:
-        raise NotImplementedError
+    def _session_path(self) -> Path:
+        safe_name = Path(self.session_name).name
+        return Handler.SESSIONS_DIR / f"{safe_name}.json"
 
-    def _execute_tool_call(
-        self,
-        messages: List[Dict[str, Any]],
-        tool_call: dict,
-    ) -> Generator[str, None, None]:
-        """
-        执行单个工具调用（包含确认逻辑），并添加 tool 消息。
-        返回生成器，输出执行过程中的提示信息。
-        """
+    def _load_session(self):
+        if self.session_name in Handler._conversations:
+            return
+        file_path = self._session_path()
+        if file_path.exists():
+            try:
+                data = json.loads(file_path.read_text(encoding="utf-8"))
+                if isinstance(data, list):
+                    # 清理孤立的 tool 消息
+                    data = clean_tool_messages(data)
+                    Handler._conversations[self.session_name] = data
+                    return
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                pass
+        Handler._conversations[self.session_name] = []
+
+    def _save_session(self):
+        session = Handler._conversations.get(self.session_name)
+        if session is None:
+            return
+        # 保存前也清理一次，防止写入垃圾数据
+        cleaned_session = clean_tool_messages(session)
+        file_path = self._session_path()
+        file_path.write_text(
+            json.dumps(cleaned_session, ensure_ascii=False, indent=2),
+            encoding="utf-8"
+        )
+
+    def make_messages(self, prompt: str) -> List[Dict[str, Any]]:
+        self._load_session()
+        session = Handler._conversations.get(self.session_name)
+        if not session:
+            session.append({"role": "system", "content": self.role.role})
+        session.append({"role": "user", "content": prompt})
+        return session
+
+    def _execute_tool_call(self, messages, tool_call):
+        """执行工具调用，用 print 输出提示，不污染回复文本"""
         tool_call_id = tool_call["id"]
         name = tool_call["function"]["name"]
         arguments = tool_call["function"]["arguments"]
-
         dict_args = json.loads(arguments)
         joined_args = ", ".join(f'{k}="{v}"' for k, v in dict_args.items())
-        yield f"> @FunctionCall `{name}({joined_args})` \n\n"
+        print(f"> @FunctionCall `{name}({joined_args})` \n")
 
-        # 用户确认
         execute_allowed = True
         if name in FUNCTIONS_REQUIRE_CONFIRMATION and self.role.name not in TRUSTED_ROLES:
             if name == "execute_shell_command":
@@ -92,28 +157,23 @@ class Handler:
                 print(f"\n⚠️  About to execute: `{cmd}`")
             else:
                 print(f"\n⚠️  About to call function `{name}` with args: {dict_args}")
-
             try:
                 user_input = input("Proceed? (y/n): ").strip().lower()
             except EOFError:
                 user_input = "n"
             execute_allowed = user_input == "y"
-
             if not execute_allowed:
-                yield "**User denied the function call.**\n"
+                print("**User denied the function call.**\n")
 
         if execute_allowed:
             result = get_function(name)(**dict_args)
             if cfg.get("SHOW_FUNCTIONS_OUTPUT") == "true":
-                yield f"```text\n{result}\n```\n"
+                print(f"```text\n{result}\n```\n")
         else:
             result = "User denied the function call."
 
-        messages.append(
-            {"role": "tool", "content": result, "tool_call_id": tool_call_id}
-        )
+        messages.append({"role": "tool", "content": result, "tool_call_id": tool_call_id})
 
-    @cache
     def get_completion(
         self,
         model: str,
@@ -121,22 +181,26 @@ class Handler:
         top_p: float,
         messages: List[Dict[str, Any]],
         functions: Optional[List[Dict[str, str]]],
-        caching: bool = True,
         **kwargs: Any,
     ) -> Generator[str, None, None]:
+        """
+        流式生成器，负责输出助手回复的纯文本。
+        移除了 @cache 装饰器，确保会话记录总是被更新。
+        生成器正常结束时，会自动追加 assistant 消息并保存会话。
+        """
         reasoning_content = ""
         tool_calls: List[dict] = []
+        assistant_content = ""
 
-        # 角色限制
-        is_shell_role = self.role.name == DefaultRoles.SHELL.value
-        is_code_role = self.role.name == DefaultRoles.CODE.value
-        is_dsc_shell_role = self.role.name == DefaultRoles.DESCRIBE_SHELL.value
-        if is_shell_role or is_code_role or is_dsc_shell_role:
+        if self.role.name in {
+            DefaultRoles.SHELL.value,
+            DefaultRoles.CODE.value,
+            DefaultRoles.DESCRIBE_SHELL.value,
+        }:
             functions = None
 
         extra_kwargs = base_request_kwargs.copy()
         extra_kwargs.update(kwargs)
-
         if functions:
             extra_kwargs["tools"] = functions
             extra_kwargs["tool_choice"] = "auto"
@@ -157,16 +221,12 @@ class Handler:
                     continue
                 delta = chunk.choices[0].delta
 
-                # 思维链内容
                 if hasattr(delta, "reasoning_content") and delta.reasoning_content:
                     reasoning_content += delta.reasoning_content
                 elif isinstance(delta, dict) and delta.get("reasoning_content"):
                     reasoning_content += delta["reasoning_content"]
 
-                # 工具调用 delta
-                delta_tool_calls = (
-                    delta.get("tool_calls") if use_litellm else delta.tool_calls
-                )
+                delta_tool_calls = delta.get("tool_calls") if use_litellm else delta.tool_calls
                 if delta_tool_calls:
                     for tc in delta_tool_calls:
                         if use_litellm:
@@ -189,21 +249,16 @@ class Handler:
                             tool_calls[idx]["function"]["name"] = name
                         tool_calls[idx]["function"]["arguments"] += args
 
-                # 正常内容输出
                 if delta.content:
+                    assistant_content += delta.content
                     yield delta.content
 
-                # 流结束且包含工具调用
                 if chunk.choices[0].finish_reason == "tool_calls":
                     assistant_msg = {
                         "role": "assistant",
                         "content": None,
                         "tool_calls": [
-                            {
-                                "id": tc["id"],
-                                "type": "function",
-                                "function": tc["function"],
-                            }
+                            {"id": tc["id"], "type": "function", "function": tc["function"]}
                             for tc in tool_calls
                         ],
                     }
@@ -211,19 +266,29 @@ class Handler:
                         assistant_msg["reasoning_content"] = reasoning_content
                     messages.append(assistant_msg)
 
-                    yield "\n"
+                    print()
                     for tc in tool_calls:
-                        yield from self._execute_tool_call(messages, tc)
+                        self._execute_tool_call(messages, tc)
 
+                    # 递归继续，最终返回的文本会通过外层的 yield from 传出
                     yield from self.get_completion(
                         model=model,
                         temperature=temperature,
                         top_p=top_p,
                         messages=messages,
                         functions=functions,
-                        caching=False,
                     )
-                    return
+                    return  # 递归结束后直接返回，不执行后续的保存
+
+            # 正常结束（无工具调用或工具调用递归完成后）
+            if assistant_content:
+                assistant_msg = {"role": "assistant", "content": assistant_content}
+                if reasoning_content:
+                    assistant_msg["reasoning_content"] = reasoning_content
+                messages.append(assistant_msg)
+
+            # 不论是否产生内容，都将当前消息状态保存到磁盘
+            self._save_session()
 
         except KeyboardInterrupt:
             response.close()
@@ -241,13 +306,28 @@ class Handler:
     ) -> str:
         disable_stream = cfg.get("DISABLE_STREAMING") == "true"
         messages = self.make_messages(prompt.strip())
+
         generator = self.get_completion(
             model=model,
             temperature=temperature,
             top_p=top_p,
             messages=messages,
             functions=functions,
-            caching=caching,
             **kwargs,
         )
-        return self.printer(generator, not disable_stream)
+        result = self.printer(generator, not disable_stream)
+        # 即使 get_completion 内部已保存，此处再保存一次确保万无一失
+        self._save_session()
+        return result
+
+    @classmethod
+    def clear_session(cls, session_name: str = None):
+        name = session_name or cls._current_session
+        if name in cls._conversations:
+            del cls._conversations[name]
+        safe_name = Path(name).name
+        file_path = cls.SESSIONS_DIR / f"{safe_name}.json"
+        if file_path.exists():
+            file_path.unlink()
+        if name == cls._current_session:
+            cls._current_session = "default"

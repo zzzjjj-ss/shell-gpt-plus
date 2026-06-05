@@ -62,18 +62,38 @@ class ChatSession:
 
         return wrapper
 
+    @staticmethod
+    def _clean_tool_messages(messages: List[Dict]) -> List[Dict]:
+        """
+        Remove orphaned tool messages that are not preceded by an assistant message with tool_calls.
+        OpenAI API requires each tool message to follow an assistant message that contains tool_calls.
+        """
+        cleaned = []
+        for i, msg in enumerate(messages):
+            if msg.get("role") == "tool":
+                # Check if the previous message exists and is an assistant with tool_calls
+                if i == 0 or messages[i-1].get("role") != "assistant" or "tool_calls" not in messages[i-1]:
+                    continue  # Skip this orphaned tool message
+            cleaned.append(msg)
+        return cleaned
+
     def _read(self, chat_id: str) -> List[Dict[str, str]]:
         file_path = self.storage_path / chat_id
         if not file_path.exists():
             return []
         parsed_cache = json.loads(file_path.read_text())
-        return parsed_cache if isinstance(parsed_cache, list) else []
+        if not isinstance(parsed_cache, list):
+            return []
+        # Clean orphaned tool messages before returning
+        return self._clean_tool_messages(parsed_cache)
 
     def _write(self, messages: List[Dict[str, str]], chat_id: str) -> None:
         file_path = self.storage_path / chat_id
+        # Clean orphaned tool messages before truncating and saving
+        cleaned_messages = self._clean_tool_messages(messages)
         # Retain the first message since it defines the role
         truncated_messages = (
-            messages[:1] + messages[1 + max(0, len(messages) - self.length) :]
+            cleaned_messages[:1] + cleaned_messages[1 + max(0, len(cleaned_messages) - self.length) :]
         )
         json.dump(truncated_messages, file_path.open("w"))
 
