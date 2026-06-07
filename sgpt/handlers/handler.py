@@ -50,19 +50,41 @@ else:
     base_request_kwargs.clear()
 
 
-# ---------- 公共清理函数 ----------
+# ---------- 公共清理函数（增强版）----------
 def clean_tool_messages(messages: List[Dict]) -> List[Dict]:
     """
-    移除所有前面没有对应 assistant.tool_calls 的孤立 tool 消息。
-    OpenAI API 要求每个 tool 消息必须紧跟在带 tool_calls 的 assistant 消息之后。
+    移除所有不完整的工具调用消息：
+    - 孤立的 tool 消息（前面没有 assistant 带 tool_calls）
+    - 孤立的 assistant 带 tool_calls（后面缺少足够数量的 tool 消息）
     """
     cleaned = []
-    for i, msg in enumerate(messages):
-        if msg.get("role") == "tool":
-            # 检查前一条消息是否存在，且是 assistant 且包含 tool_calls
-            if i == 0 or messages[i-1].get("role") != "assistant" or "tool_calls" not in messages[i-1]:
-                continue  # 丢弃这条孤立的 tool 消息
-        cleaned.append(msg)
+    i = 0
+    n = len(messages)
+    while i < n:
+        msg = messages[i]
+        if msg.get("role") == "assistant" and "tool_calls" in msg:
+            expected_tool_count = len(msg["tool_calls"])
+            j = i + 1
+            tool_count = 0
+            while j < n and messages[j].get("role") == "tool":
+                tool_count += 1
+                j += 1
+            if tool_count < expected_tool_count:
+                # 不完整：跳过这个 assistant 及其后面跟随的 tool 消息
+                i = j
+                continue
+            else:
+                # 完整：保留 assistant 和所有 tool 消息
+                cleaned.append(msg)
+                cleaned.extend(messages[i+1:j])
+                i = j
+        elif msg.get("role") == "tool":
+            # 孤立的 tool 消息（前面不是 assistant 带 tool_calls）
+            i += 1
+            continue
+        else:
+            cleaned.append(msg)
+            i += 1
     return cleaned
 
 
@@ -113,7 +135,7 @@ class Handler:
             try:
                 data = json.loads(file_path.read_text(encoding="utf-8"))
                 if isinstance(data, list):
-                    # 清理孤立的 tool 消息
+                    # 清理不完整的工具消息
                     data = clean_tool_messages(data)
                     Handler._conversations[self.session_name] = data
                     return
@@ -188,6 +210,9 @@ class Handler:
         移除了 @cache 装饰器，确保会话记录总是被更新。
         生成器正常结束时，会自动追加 assistant 消息并保存会话。
         """
+        # 在开始前彻底清理消息序列，避免 API 400 错误
+        messages = clean_tool_messages(messages)
+
         reasoning_content = ""
         tool_calls: List[dict] = []
         assistant_content = ""

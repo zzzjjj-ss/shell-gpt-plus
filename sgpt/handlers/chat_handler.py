@@ -65,16 +65,40 @@ class ChatSession:
     @staticmethod
     def _clean_tool_messages(messages: List[Dict]) -> List[Dict]:
         """
-        Remove orphaned tool messages that are not preceded by an assistant message with tool_calls.
-        OpenAI API requires each tool message to follow an assistant message that contains tool_calls.
+        移除所有不完整的工具调用消息：
+        - 孤立的 tool 消息（前面没有 assistant 带 tool_calls）
+        - 孤立的 assistant 带 tool_calls（后面缺少足够数量的 tool 消息）
         """
         cleaned = []
-        for i, msg in enumerate(messages):
-            if msg.get("role") == "tool":
-                # Check if the previous message exists and is an assistant with tool_calls
-                if i == 0 or messages[i-1].get("role") != "assistant" or "tool_calls" not in messages[i-1]:
-                    continue  # Skip this orphaned tool message
-            cleaned.append(msg)
+        i = 0
+        n = len(messages)
+        while i < n:
+            msg = messages[i]
+            if msg.get("role") == "assistant" and "tool_calls" in msg:
+                # 预期需要的 tool 消息数量
+                expected_tool_count = len(msg["tool_calls"])
+                # 统计后续连续的 tool 消息数量
+                j = i + 1
+                tool_count = 0
+                while j < n and messages[j].get("role") == "tool":
+                    tool_count += 1
+                    j += 1
+                if tool_count < expected_tool_count:
+                    # 不完整：跳过这个 assistant 及其后面跟随的 tool 消息
+                    i = j
+                    continue
+                else:
+                    # 完整：保留 assistant 和所有 tool 消息
+                    cleaned.append(msg)
+                    cleaned.extend(messages[i+1:j])
+                    i = j
+            elif msg.get("role") == "tool":
+                # 孤立的 tool 消息（前面不是 assistant 带 tool_calls）
+                i += 1
+                continue
+            else:
+                cleaned.append(msg)
+                i += 1
         return cleaned
 
     def _read(self, chat_id: str) -> List[Dict[str, str]]:
